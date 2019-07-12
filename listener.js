@@ -1,4 +1,8 @@
-document.addEventListener('click', function(e){
+document.addEventListener('mousedown', function(e){
+	/* functionality of this extension (when icon is green/turned on) is right click on the element, then look in the console window to see the selectors available */
+	if (!(e.which === 3 || e.button === 2))
+		return;
+	
 	chrome.storage.sync.get("enabled", function(value){
 		if(value.enabled){
 			var selectors = {};
@@ -28,8 +32,10 @@ document.addEventListener('click', function(e){
 			// determine the best selector based on selector rankings
 			determineBestSelector(selectors);
 			// copy find by tag to clipboard
-			copyToClipboard(selectors.recommendedSelector);
-
+			//copyToClipboard(selectors.recommendedSelector);
+			
+			logToConsole(selectors);
+			
 			console.log(selectors);
 		}
 	});
@@ -38,7 +44,7 @@ document.addEventListener('click', function(e){
 var setIDSelector = function(sourceElement, collector){
 	collector.id = {
 		selector: sourceElement.id,
-		tag: '@FindBy(id="' + sourceElement.id + '")',
+		tag: 'By.Id("' + sourceElement.id + '")',
 		element: document.getElementById(sourceElement.id)
 	};
 
@@ -48,7 +54,7 @@ var setIDSelector = function(sourceElement, collector){
 var setNameSelector = function(sourceElement, collector){
 	collector.name = {
 		selector: sourceElement.name,
-		tag: '@FindBy(name="' + sourceElement.name + '")',
+		tag: 'By.Name("' + sourceElement.name + '")',
 		element: document.getElementsByName(sourceElement.name)[0]
 	};
 
@@ -93,7 +99,7 @@ var setXPATHSelector = function(sourceElement, collector){
 	}
 	collector.xpath = {};
 	collector.xpath.selector = xpath;
-	collector.xpath.tag = '@FindBy(xpath="'+ xpath + '")';
+	collector.xpath.tag = 'By.XPath("'+ xpath + '")';
 	collector.xpath.element = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
 	collector.xpath.selected = collector.xpath.element === sourceElement;
 }
@@ -101,11 +107,19 @@ var setXPATHSelector = function(sourceElement, collector){
 var setClassNameSelector = function(sourceElement, collector){
 	collector.className = {
 		selector: sourceElement.className,
-		tag: '@FindBy(className="'+ sourceElement.className + '")',
+		tag: 'By.ClassName("'+ sourceElement.className + '")',
 		element: document.getElementsByClassName(sourceElement.className)[0]
 	};
 
 	collector.className.selected = collector.className.element === sourceElement
+}
+
+//https://stackoverflow.com/questions/5559425/isnullorwhitespace-in-javascript/5559461
+function isNullOrWhitespace( input ) {
+
+    if (typeof input === 'undefined' || input == null) return true;
+
+    return input.replace(/\s/g, '').length < 1;
 }
 
 var setCssSelector = function(sourceElement, collector){
@@ -126,13 +140,15 @@ var setCssSelector = function(sourceElement, collector){
 	if(classNames){
 		var classes = classNames.split(" ");
 		classes.forEach(function(name){
-			cssSelector += "."+name;
+			if (!isNullOrWhitespace(name)) {
+				cssSelector += "."+name;
+			}
 		});
 	}
 	if(cssSelector !== "" && cssSelector !== tagName.toLowerCase()){
 		collector.css = {
 			selector: cssSelector,
-			tag: '@FindBy(css="' + cssSelector + '")',
+			tag: 'By.CssSelector("' + cssSelector + '")',
 			element: document.querySelector(cssSelector)
 		};
 
@@ -153,8 +169,30 @@ var determineBestSelector = function(collector){
 		collector.recommendedSelector = collector.xpath.tag;
 	}
 }
-var copyToClipboard = function(text){
-    var copyDiv = document.createElement('div');
+var logToConsole = function(text){
+	console.log(text);
+	
+	if (typeof text.id != 'undefined') {
+		console.log(text.id.tag);
+	}
+	
+	if (typeof text.css != 'undefined') {
+		console.log(text.css.tag);
+	}
+
+	if (typeof text.name != 'undefined') {
+		console.log(text.name.tag);
+	}
+
+	if (typeof text.className != 'undefined') {
+		console.log(text.className.tag);
+	}
+
+	if (typeof text.xpath != 'undefined') {
+		console.log(text.xpath.tag);
+	}
+	
+/*     var copyDiv = document.createElement('div');
     copyDiv.contentEditable = true;
     document.body.appendChild(copyDiv);
     copyDiv.innerHTML = text;
@@ -163,5 +201,5 @@ var copyToClipboard = function(text){
     document.execCommand('SelectAll');
     document.execCommand("Copy", false, null);
     document.body.removeChild(copyDiv);
-    console.log("Tag " + text + " copied to your clipboard.");
+    console.log("Tag " + text + " copied to your clipboard."); */
 }
